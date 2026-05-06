@@ -1,0 +1,18 @@
+{
+  "monitor_enabled": true,
+  "normalize": true,
+  "stereo": true,
+  "replace": true,
+  "convert": true,
+  "mb_min": 12,
+  "threshold": 2.0,
+  "encoder_mode": "hevc_nvenc",
+  "temp_folder": "D:\\ez_ffmpeg_cache",
+  "monitored_folders": [
+    "N:\\_Libraries",
+    "O:\\_Libraries",
+    "P:\\_Libraries",
+    "S:\\_Libraries",
+    "T:\\_Libraries"
+  ]
+}

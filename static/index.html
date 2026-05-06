@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>EZ_ffmpeg Service</title>
+    <link rel="stylesheet" href="/static/styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="topbar">
+        <div>
+          <h1>EZ_ffmpeg Service</h1>
+          <div id="serviceStatus" class="service-status">Starting...</div>
+        </div>
+        <div class="top-actions">
+          <button id="monitorButton" class="secondary-button monitor-button" type="button">Monitor On</button>
+          <button id="runButton" class="primary-button" type="button">Run Conversion</button>
+        </div>
+      </section>
+
+      <section class="controls-grid">
+        <div class="panel watch-panel">
+          <div class="panel-heading">
+            <h2>Monitored Folders</h2>
+          </div>
+          <form id="folderForm" class="path-form">
+            <input id="folderInput" type="text" autocomplete="off" placeholder="P:\Media\Incoming">
+            <button id="folderBrowseButton" class="secondary-button" type="button">Browse</button>
+            <button class="secondary-button" type="submit">Add Folder</button>
+          </form>
+          <div id="folderList" class="folder-list"></div>
+        </div>
+
+        <div class="panel options-panel">
+          <div class="toggle-grid">
+            <label><input id="normalizeInput" type="checkbox"> Normalize</label>
+            <label><input id="stereoInput" type="checkbox"> Stereo</label>
+            <label><input id="replaceInput" type="checkbox"> Replace</label>
+            <label><input id="convertInput" type="checkbox"> Convert</label>
+          </div>
+          <div class="preset-row">
+            <button data-preset="movies" class="secondary-button" type="button">Movies</button>
+            <button data-preset="television" class="secondary-button" type="button">Television</button>
+            <button data-preset="animation" class="secondary-button" type="button">Animation</button>
+          </div>
+        </div>
+
+        <div class="panel encode-panel">
+          <label class="range-label" for="mbMinInput">
+            <span>MB/min</span>
+            <strong id="mbMinValue">12</strong>
+          </label>
+          <input id="mbMinInput" type="range" min="2" max="45" step="1">
+          <div class="field-grid">
+            <label>
+              Threshold
+              <input id="thresholdInput" type="number" min="0" step="0.1">
+            </label>
+            <label>
+              Encoder
+              <select id="encoderInput"></select>
+            </label>
+          </div>
+          <label class="temp-field">
+            Temp Folder
+            <span class="browse-field">
+              <input id="tempFolderInput" type="text">
+              <button id="tempBrowseButton" class="secondary-button" type="button">Browse</button>
+            </span>
+          </label>
+        </div>
+      </section>
+
+      <section class="queue-shell">
+        <div class="queue-meta">
+          <div>
+            <div id="queueSummary">Current file ETA: -- | Queue remaining: -- | Finish: --</div>
+            <div id="queueStats">Queued: 0 | Processing: 0 | Completed: 0 | Skipped: 0 | Failed: 0 | Saved: 0.00 MB</div>
+          </div>
+          <button id="clearQueueButton" class="secondary-button" type="button">Clear Queue</button>
+        </div>
+        <div class="progress-track">
+          <div id="progressFill" class="progress-fill"></div>
+          <span id="progressText">0.0%</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Filename</th>
+                <th>Status</th>
+                <th>Encoder</th>
+                <th>Codec</th>
+                <th>Resolution</th>
+                <th>Audio</th>
+                <th>MB before</th>
+                <th>MB/min before</th>
+                <th>Length</th>
+                <th>ETA</th>
+                <th>Elapsed</th>
+                <th>Avg speed</th>
+                <th>MB after</th>
+                <th>MB/min after</th>
+              </tr>
+            </thead>
+            <tbody id="queueBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="excluded-shell">
+        <div class="excluded-meta">
+          <div>
+            <h2>Excluded Files</h2>
+            <div id="excludedSummary">No excluded files.</div>
+          </div>
+          <button id="clearExclusionsButton" class="secondary-button" type="button">Clear Exclusions</button>
+        </div>
+        <div class="table-wrap excluded-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Filename</th>
+                <th>Status</th>
+                <th>MB before</th>
+                <th>MB/min before</th>
+                <th>Length</th>
+                <th>MB after</th>
+                <th>MB/min after</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="excludedBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <dialog id="stopDialog">
+      <form method="dialog" class="dialog-body">
+        <h2>Stop Conversion</h2>
+        <p>The monitor can stop after the current file, or abort the active FFmpeg process and clear its temp output.</p>
+        <div class="dialog-actions">
+          <button id="finishStopButton" class="secondary-button" value="finish" type="button">Finish Current File</button>
+          <button id="abortStopButton" class="danger-button" value="abort" type="button">Abort Current Conversion</button>
+          <button class="ghost-button" value="cancel">Cancel</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="browseDialog">
+      <form method="dialog" class="dialog-body browse-dialog-body">
+        <h2 id="browseTitle">Choose Folder</h2>
+        <div class="browse-toolbar">
+          <button id="browseUpButton" class="secondary-button" type="button">Up</button>
+          <input id="browsePathInput" type="text" readonly>
+        </div>
+        <div id="browseRoots" class="browse-roots"></div>
+        <div id="browseList" class="browse-list"></div>
+        <div class="dialog-actions">
+          <button id="browseSelectButton" class="primary-button" type="button">Use This Folder</button>
+          <button class="ghost-button" value="cancel">Cancel</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
