@@ -5,7 +5,7 @@
   "replace": true,
   "convert": true,
   "mb_min": 12,
-  "threshold": 2.0,
+  "threshold": 4.0,
   "encoder_mode": "hevc_nvenc",
   "temp_folder": "D:\\ez_ffmpeg_cache",
   "monitored_folders": [
@@ -13,6 +13,7 @@
     "O:\\_Libraries",
     "P:\\_Libraries",
     "S:\\_Libraries",
-    "T:\\_Libraries"
+    "T:\\_Libraries",
+    "N:\\Weeklies"
   ]
 }

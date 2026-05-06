@@ -232,7 +232,7 @@ function formatFolderProgress(progress) {
   if (phase === "Counting") {
     return `Counting: ${progress.counted_files || 0} videos found`;
   }
-  if (phase === "Loading") {
+  if (phase === "Checking" || phase === "Loading") {
     return `Loading: ${progress.processed_files || 0}/${progress.total_files || 0} checked, ${
       progress.loaded_files || 0
     } analyzed`;

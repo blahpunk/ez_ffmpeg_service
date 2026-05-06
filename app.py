@@ -682,31 +682,31 @@ class EZFfmpegService:
                         )
                     continue
 
-                total_files = self.count_folder_videos(folder, cache_folder, generation)
-                if total_files is None:
-                    return
-
                 with self.lock:
                     progress = self.folder_progress.setdefault(
                         folder,
                         self.create_folder_progress(folder),
                     )
+                    previous_total = progress.get("total_files", 0) or 0
                     progress.update(
                         {
-                            "phase": "Loading",
-                            "total_files": total_files,
+                            "phase": "Checking",
+                            "total_files": previous_total,
                             "processed_files": 0,
                             "loaded_files": 0,
+                            "counted_files": 0,
                             "current_path": folder,
-                            "started_at": progress.get("started_at") or time.time(),
+                            "started_at": time.time(),
                             "finished_at": None,
                         }
                     )
-                    self.status_message = f"Loading {folder}"
+                    self.status_message = f"Checking {folder}"
 
+                total_files = 0
                 for file_path, stat_result in self.iter_video_files(folder, cache_folder, generation):
                     if self.scan_cancelled(generation):
                         return
+                    total_files += 1
                     discovered_paths.add(file_path)
                     self.process_discovered_file(file_path, stat_result, folder, generation)
 
@@ -720,7 +720,9 @@ class EZFfmpegService:
                     progress.update(
                         {
                             "phase": "Complete",
-                            "processed_files": progress.get("total_files", 0),
+                            "total_files": total_files,
+                            "processed_files": total_files,
+                            "counted_files": total_files,
                             "current_path": folder,
                             "finished_at": time.time(),
                         }
@@ -745,61 +747,6 @@ class EZFfmpegService:
 
             self.last_scan_finished = time.time()
             self.status_message = "Monitor is on"
-
-    def count_folder_videos(self, folder: str, cache_folder: str, generation: int) -> int | None:
-        count = 0
-        with self.lock:
-            progress = self.folder_progress.setdefault(folder, self.create_folder_progress(folder))
-            progress.update(
-                {
-                    "phase": "Counting",
-                    "total_files": 0,
-                    "processed_files": 0,
-                    "loaded_files": 0,
-                    "counted_files": 0,
-                    "current_path": folder,
-                    "started_at": time.time(),
-                    "finished_at": None,
-                }
-            )
-            self.status_message = f"Counting {folder}"
-
-        try:
-            for root, dirs, files in os.walk(folder):
-                if self.scan_cancelled(generation):
-                    return None
-                dirs[:] = [
-                    dirname
-                    for dirname in dirs
-                    if not should_ignore_video(os.path.join(root, dirname), cache_folder)
-                ]
-                for file_name in files:
-                    if self.scan_cancelled(generation):
-                        return None
-                    file_path = os.path.normpath(os.path.join(root, file_name))
-                    if not is_video_path(file_path) or should_ignore_video(file_path, cache_folder):
-                        continue
-                    count += 1
-                    if count == 1 or count % 25 == 0:
-                        with self.lock:
-                            progress = self.folder_progress.setdefault(
-                                folder,
-                                self.create_folder_progress(folder),
-                            )
-                            progress["counted_files"] = count
-                            progress["total_files"] = count
-                            progress["current_path"] = root
-        except Exception as exc:
-            with self.lock:
-                self.last_scan_error = str(exc)
-            return None
-
-        with self.lock:
-            progress = self.folder_progress.setdefault(folder, self.create_folder_progress(folder))
-            progress["counted_files"] = count
-            progress["total_files"] = count
-            progress["current_path"] = folder
-        return count
 
     def iter_video_files(self, folder: str, cache_folder: str, generation: int):
         for root, dirs, files in os.walk(folder):
@@ -860,10 +807,13 @@ class EZFfmpegService:
 
         with self.lock:
             progress = self.folder_progress.setdefault(folder, self.create_folder_progress(folder))
+            total_files = max(progress.get("total_files", 0) or 0, progress.get("processed_files", 0) + 1)
             progress["processed_files"] = min(
                 progress.get("processed_files", 0) + 1,
-                progress.get("total_files", 0) or progress.get("processed_files", 0) + 1,
+                total_files,
             )
+            progress["total_files"] = total_files
+            progress["counted_files"] = max(progress.get("counted_files", 0) or 0, progress["processed_files"])
             progress["current_path"] = file_path
 
     def prepare_discovered_file(
@@ -1509,7 +1459,6 @@ class EZFfmpegService:
                 self.current_cached_file_path = None
                 self.current_item_path = None
                 self.abort_event.clear()
-            self.scan_event.set()
 
     def build_cached_input_path(self, file_path: str) -> str:
         return os.path.join(self.settings.temp_folder, f"{file_id_for_path(file_path)[:12]}_{os.path.basename(file_path)}")
